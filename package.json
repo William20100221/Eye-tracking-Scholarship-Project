@@ -1,0 +1,25 @@
+{
+  "name": "eye-tracking-scholarship-project",
+  "version": "1.0.0",
+  "description": "Eye-tracking Scholarship Project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/William20100221/Eye-tracking-Scholarship-Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/William20100221/Eye-tracking-Scholarship-Project/issues"
+  },
+  "homepage": "https://github.com/William20100221/Eye-tracking-Scholarship-Project#readme",
+  "devDependencies": {
+    "@types/chrome": "^0.2.2",
+    "typescript": "^7.0.2"
+  }
+}

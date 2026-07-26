@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Reading Comprehension Assistant",
+  "description": "Helps reduce comprehension loss during digital reading",
+  "version": "1.0",
+  "permissions": ["storage", "activeTab"],
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["dist/content.js"]
+  }]
+}
