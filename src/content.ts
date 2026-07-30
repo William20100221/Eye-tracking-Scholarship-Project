@@ -1,6 +1,8 @@
 // Runs on the web page. No camera, no MediaPipe here.
 // It only receives eye positions and (later) does the reading logic.
 
+export {}; // <- IMPORTANT. Makes esbuild treat this as a module.
+
 let count = 0;
 
 chrome.runtime.onMessage.addListener((msg) => {

@@ -1,6 +1,6 @@
 {
   "name": "eye-tracking-scholarship-project",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "description": "Eye-tracking Scholarship Project",
   "main": "index.js",
   "scripts": {
