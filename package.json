@@ -1,11 +1,11 @@
 {
   "name": "eye-tracking-scholarship-project",
-  "version": "1.0.0",
+  "version": "0.0.3",
   "description": "Eye-tracking Scholarship Project",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "esbuild src/content.ts src/background.ts src/popup.ts src/offscreen.ts src/permission.ts --bundle --outdir=dist --format=iife --target=chrome110"  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/William20100221/Eye-tracking-Scholarship-Project.git"
@@ -20,6 +20,10 @@
   "homepage": "https://github.com/William20100221/Eye-tracking-Scholarship-Project#readme",
   "devDependencies": {
     "@types/chrome": "^0.2.2",
+    "esbuild": "^0.28.1",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.35"
   }
 }

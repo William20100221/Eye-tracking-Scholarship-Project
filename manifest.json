@@ -2,16 +2,28 @@
   "manifest_version": 3,
   "name": "Reading Comprehension Assistant",
   "description": "Helps reduce comprehension loss during digital reading",
-  "version": "1.0",
-  "permissions": ["storage", "activeTab"],
+  "version": "0.4",
+  "permissions": ["storage", "activeTab", "offscreen"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "dist/background.js"
   },
   "action": {
     "default_popup": "popup.html"
   },
-  "content_scripts": [{
-    "matches": ["<all_urls>"],
-    "js": ["dist/content.js"]
-  }]
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content.js"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["models/*", "wasm/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
