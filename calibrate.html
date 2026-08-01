@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Calibrate</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #111;
+        color: #eee;
+        font-family: system-ui, sans-serif;
+      }
+
+      #intro {
+        max-width: 520px;
+        margin: 12vh auto;
+        line-height: 1.6;
+        padding: 0 20px;
+      }
+      #intro h1 { font-size: 22px; }
+      #intro li { margin-bottom: 6px; }
+      button {
+        padding: 12px 22px;
+        font-size: 16px;
+        cursor: pointer;
+        border: 0;
+        border-radius: 6px;
+        background: #4a9eff;
+        color: #fff;
+      }
+      button:disabled { background: #555; cursor: default; }
+
+      /* The moving target */
+      #dot {
+        position: fixed;
+        width: 26px;
+        height: 26px;
+        margin: -13px 0 0 -13px;
+        border-radius: 50%;
+        background: #4a9eff;
+        display: none;
+        transition: opacity .15s;
+      }
+      #dot.ready { background: #45d17a; }
+      #dot::after {
+        content: "";
+        position: absolute;
+        left: 10px; top: 10px;
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: #111;
+      }
+
+      #hud {
+        position: fixed;
+        bottom: 18px;
+        left: 0; right: 0;
+        text-align: center;
+        font-size: 14px;
+        color: #aaa;
+        display: none;
+      }
+
+      #result {
+        max-width: 520px;
+        margin: 12vh auto;
+        line-height: 1.7;
+        padding: 0 20px;
+        display: none;
+      }
+      .big { font-size: 20px; font-weight: 600; }
+      .good { color: #45d17a; }
+      .ok { color: #e5c04b; }
+      .bad { color: #ff6b6b; }
+    </style>
+  </head>
+
+  <body>
+    <div id="intro">
+      <h1>Calibrate eye tracking</h1>
+      <p>
+        A dot will appear in different places. Look straight at it and keep
+        looking until it turns green and moves on. It takes about 30 seconds.
+      </p>
+      <ul>
+        <li>Sit the way you normally sit when reading</li>
+        <li>Keep your head still — move your eyes, not your head</li>
+        <li>Do not move this window during calibration</li>
+        <li>Make the window full screen first</li>
+      </ul>
+      <p id="waiting" style="color:#e5c04b">Waiting for the camera...</p>
+      <button id="startBtn" disabled>Start</button>
+    </div>
+
+    <div id="dot"></div>
+    <div id="hud"></div>
+
+    <div id="result">
+      <h1>Done</h1>
+      <p id="score" class="big"></p>
+      <p id="advice"></p>
+      <button id="againBtn">Calibrate again</button>
+    </div>
+
+    <script src="dist/calibrate.js"></script>
+  </body>
+</html>

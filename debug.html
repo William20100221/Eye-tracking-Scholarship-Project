@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Eye tracking - face view</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #0d0d10;
+        color: #e8e8ea;
+        font-family: system-ui, sans-serif;
+        display: flex;
+        gap: 24px;
+        padding: 24px;
+        flex-wrap: wrap;
+      }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      .sub { font-size: 12px; color: #888; margin: 0 0 14px; }
+
+      canvas {
+        background: #16161b;
+        border: 1px solid #2a2a33;
+        border-radius: 8px;
+        display: block;
+      }
+
+      .panel { min-width: 300px; }
+
+      table { border-collapse: collapse; font-size: 13px; width: 100%; }
+      td { padding: 4px 8px; border-bottom: 1px solid #24242c; }
+      td.k { color: #8a8a95; white-space: nowrap; }
+      td.v { text-align: right; font-variant-numeric: tabular-nums; }
+
+      .bar {
+        height: 6px;
+        background: #24242c;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 3px;
+      }
+      .bar > i { display: block; height: 100%; background: #4a9eff; }
+
+      .status { font-size: 13px; margin-bottom: 12px; }
+      .on { color: #45d17a; }
+      .off { color: #ff6b6b; }
+
+      #screen {
+        margin-top: 18px;
+        border: 1px solid #2a2a33;
+        border-radius: 6px;
+        background: #16161b;
+      }
+      .note { font-size: 11px; color: #6a6a75; margin-top: 6px; line-height:1.5; }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <h1>Face view</h1>
+      <p class="sub">Mirrored, like looking in a mirror.</p>
+      <canvas id="face" width="640" height="480"></canvas>
+      <p class="note">
+        Grey = all 478 points &nbsp;·&nbsp; Blue = eye outline &nbsp;·&nbsp;
+        Green = iris &nbsp;·&nbsp; Orange = eye corners used as the ruler
+      </p>
+    </div>
+
+    <div class="panel">
+      <h1>Numbers</h1>
+      <p class="sub">What the maths actually sees.</p>
+
+      <div class="status">
+        Camera: <span id="camState" class="off">waiting</span>
+        &nbsp;·&nbsp; <span id="fps">0</span> updates/sec
+      </div>
+
+      <table id="feat"></table>
+
+      <h1 style="margin-top:22px">Where it thinks you look</h1>
+      <p class="sub">Needs calibration. Empty box = not calibrated.</p>
+      <canvas id="screen" width="320" height="180"></canvas>
+      <p class="note">
+        The box is your whole screen, shrunk down. The dot is the guess.
+      </p>
+    </div>
+
+    <script src="dist/debug.js"></script>
+  </body>
+</html>
