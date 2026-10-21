@@ -18,6 +18,20 @@
       }
       #dotBtn { background: #f2f2f2; }
       #dotBtn.on { background: #ffe0e0; }
+
+      /* The power switch. Green while running, so "is the camera on?" is
+         answerable at a glance. */
+      #enable.running { background: #e4f7e9; border: 1px solid #9ad9ae; }
+      #enable.stopped { background: #f2f2f2; }
+
+      /* Destructive, and it does not undo. Coloured to match. */
+      .danger {
+        background: #fff4f4;
+        color: #a83232;
+        border: 1px solid #f0cccc;
+      }
+      .danger.confirm { background: #a83232; color: #fff; border-color: #a83232; }
+
       hr { border: 0; border-top: 1px solid #e5e5e5; margin: 10px 0; }
       #status { margin-top: 8px; font-size: 12px; color: #555; }
       #calib { font-size: 12px; color: #777; margin-top: 6px; }
@@ -33,6 +47,7 @@
 
     <button id="calibrate">Calibrate</button>
     <button id="debug">Face view</button>
+    <button id="clearCal" class="danger">Clear all calibrations</button>
 
     <div id="status">Camera is off.</div>
     <div id="calib"></div>

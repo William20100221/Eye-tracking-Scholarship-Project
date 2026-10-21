@@ -4,7 +4,8 @@
   "description": "Eye-tracking Scholarship Project",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "esbuild test/run.ts --bundle --platform=node --format=esm --outfile=dist/test-run.mjs && node dist/test-run.mjs",
+    "typecheck": "tsc --noEmit",
     "build": "esbuild src/content.ts src/background.ts src/popup.ts src/offscreen.ts src/permission.ts src/calibrate.ts src/debug.ts --bundle --outdir=dist --format=iife --target=chrome110",
     "type": "git",
     "url": "git+https://github.com/William20100221/Eye-tracking-Scholarship-Project.git"

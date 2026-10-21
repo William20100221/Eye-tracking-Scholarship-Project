@@ -9,7 +9,8 @@
 //     fires. We drive the loop from the video instead.
 
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
-import { activeExtractor } from "./core/FeatureExtractor";
+import { activeExtractor } from "./core/active";
+import { frameQuality } from "./core/VerticalFeatureExtractor";
 import { GazeEstimator } from "./core/GazeEstimator";
 
 class GazeTracker {
@@ -35,20 +36,52 @@ class GazeTracker {
     this.listenForModel();
   }
 
+  /**
+   * Rebuild a saved calibration, but ONLY if it was trained on the features
+   * we are producing now.
+   *
+   * This guard matters. A saved model is a list of weights, one per feature.
+   * Swap the extractor and the old weight list is the wrong length - and
+   * because dot() walks the feature list, the extra features get multiplied
+   * by `undefined` and every prediction comes out NaN. Nothing would throw;
+   * the dot would just quietly stop moving.
+   */
+  private loadModel(json: any): GazeEstimator | null {
+    const est = GazeEstimator.fromJSON(json);
+    if (!est) return null;
+
+    if (est.extractorName !== activeExtractor.name) {
+      console.warn(
+        `[eye] ignoring saved calibration: it was trained on ` +
+          `"${est.extractorName || "unknown"}" but we are now producing ` +
+          `"${activeExtractor.name}". Please calibrate again.`
+      );
+      return null;
+    }
+    return est;
+  }
+
   /** Get the saved calibration from the service worker, and stay updated. */
   private listenForModel(): void {
     chrome.runtime.sendMessage({ type: "GET_MODEL" }, (json: any) => {
       if (chrome.runtime.lastError) return; // worker asleep, no problem
       if (json) {
-        this.estimator = GazeEstimator.fromJSON(json);
+        this.estimator = this.loadModel(json);
         if (this.estimator) console.log("[eye] loaded saved calibration");
       }
     });
 
     chrome.runtime.onMessage.addListener((msg: any) => {
       if (msg?.type === "MODEL") {
-        this.estimator = GazeEstimator.fromJSON(msg.model);
-        console.log("[eye] calibration updated");
+        if (msg.model == null) {
+          // Calibration was cleared from the popup. Drop it here too, or we
+          // would keep predicting from a model the user just deleted.
+          this.estimator = null;
+          console.log("[eye] calibration cleared - predictions stopped");
+        } else {
+          this.estimator = this.loadModel(msg.model);
+          console.log("[eye] calibration updated");
+        }
       }
 
       // The debug face view turns this on and off. Sending 478 points
@@ -161,12 +194,18 @@ class GazeTracker {
   private handleFace(face: any): void {
     const now = performance.now();
 
-    // --- the light message: 9 numbers, always ---
+    // --- the light message: the feature row, always ---
     if (now - this.lastSend >= this.sendEveryMs) {
       this.lastSend = now;
 
       const features = activeExtractor.extract(face);
-      const msg: any = { type: "GAZE", features };
+
+      // How trustworthy is this frame? Near 0 during a blink, or when the two
+      // eyes disagree because one was mis-detected. Calibration throws these
+      // away - otherwise the model learns that a shut eye means "bottom left".
+      const quality = frameQuality(face);
+
+      const msg: any = { type: "GAZE", features, quality };
 
       if (this.estimator) {
         const p = this.estimator.predict(features);
@@ -189,7 +228,7 @@ class GazeTracker {
       }));
 
       const features = activeExtractor.extract(face);
-      const msg: any = { type: "FACE", points, features };
+      const msg: any = { type: "FACE", points, features, quality: frameQuality(face) };
 
       if (this.estimator) {
         const p = this.estimator.predict(features);

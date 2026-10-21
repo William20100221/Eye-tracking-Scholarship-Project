@@ -2,27 +2,38 @@
 // The calibration screen: show dots, collect samples, train, save.
 
 import { Sample } from "./core/types";
-import { activeExtractor } from "./core/FeatureExtractor";
-import {
-  GazeEstimator,
-  RidgeGazeEstimator,
-  MeanGazeEstimator,
-} from "./core/GazeEstimator";
+import { activeExtractor } from "./core/active";
+import { GazeEstimator, MeanGazeEstimator } from "./core/GazeEstimator";
+import { StandardizedRidgeEstimator } from "./core/StandardizedRidgeEstimator";
+import { chooseLambda, leaveOneDotOut } from "./core/Validation";
 
 console.log("[eye] calibrate page loaded");
+
+/** A recorded frame, plus how much we trust it. */
+type ScoredSample = Sample & { quality: number };
+
+/**
+ * Frames below this are dropped before training. Blinks land near 0.
+ * If almost everything is dropped, training falls back to using all of it
+ * rather than failing - see pickTrainingSet().
+ */
+const MIN_QUALITY = 0.5;
 
 /** Runs the whole calibration session. */
 class CalibrationSession {
   // 3 columns x 5 rows. Extra rows because up/down is the weak direction,
   // and reading needs up/down accuracy most.
+  // Adding rows is the cheapest accuracy win here: the vertical mapping is
+  // the one that curves most, and a curve needs points to pin it down.
   private readonly cols = [0.12, 0.5, 0.88];
   private readonly rows = [0.08, 0.29, 0.5, 0.71, 0.92];
 
   private readonly settleMs = 700; // let the eye arrive
   private readonly recordMs = 900; // then record
 
-  private samples: Sample[] = [];
+  private samples: ScoredSample[] = [];
   private latestFeatures: number[] | null = null;
+  private latestQuality = 1;
   private messagesSeen = 0;
 
   constructor(
@@ -50,6 +61,8 @@ class CalibrationSession {
         );
       }
       this.latestFeatures = res.features;
+      // Older builds of the hidden page do not send this. Assume good.
+      this.latestQuality = typeof res.quality === "number" ? res.quality : 1;
       this.onFeatures();
     });
   }
@@ -105,10 +118,14 @@ class CalibrationSession {
           this.latestFeatures &&
           this.latestFeatures.length === activeExtractor.size
         ) {
+          // Record everything, including blinks, and filter later. Filtering
+          // at capture time risks throwing away a whole dot from someone with
+          // naturally narrow eyes, and then there is nothing to fall back to.
           this.samples.push({
             features: this.latestFeatures,
             screenX: target.sx,
             screenY: target.sy,
+            quality: this.latestQuality,
           });
         }
         await this.sleep(40);
@@ -121,21 +138,73 @@ class CalibrationSession {
   }
 
   /**
+   * Drop the frames we do not trust - mostly blinks.
+   *
+   * If that leaves too little to train on, keep everything instead. A bad
+   * calibration is still better than a page that refuses to finish, and this
+   * is the likely outcome for someone whose eyes read as narrow.
+   */
+  private pickTrainingSet(): { rows: Sample[]; dropped: number; gated: boolean } {
+    const good = this.samples.filter((s) => s.quality >= MIN_QUALITY);
+    const enough = good.length >= activeExtractor.size * 4;
+    return {
+      rows: enough ? good : this.samples,
+      dropped: this.samples.length - good.length,
+      gated: enough,
+    };
+  }
+
+  /**
    * Train the real estimator, and also a dumb baseline to compare with.
    * If the real one is not clearly better, calibration failed.
+   *
+   * Two things changed here from the first version:
+   *
+   *  - The strength of the ridge penalty is chosen by measurement instead of
+   *    being hard-coded, because the right value depends on the features and
+   *    the features are no longer the ones the old 1e-3 was picked for.
+   *
+   *  - The headline error is now measured on dots the model has NEVER seen.
+   *    The old number was measured on the same samples the model learned
+   *    from, which always flatters it, and flatters it more the more
+   *    features you add. That made it useless for judging a change.
    */
   public train() {
-    const real = new RidgeGazeEstimator(1e-3);
-    real.extractorName = activeExtractor.name;
-    real.train(this.samples);
+    const { rows, dropped, gated } = this.pickTrainingSet();
 
-    const base = new MeanGazeEstimator();
-    base.train(this.samples);
+    const build = (lambda: number) => {
+      const e = new StandardizedRidgeEstimator(lambda);
+      e.extractorName = activeExtractor.name;
+      return e;
+    };
+
+    const picked = chooseLambda(rows, build);
+
+    const real = build(picked.lambda);
+    real.train(rows);
+
+    const trainErr = real.evaluate(rows);
+
+    // Holding out a dot needs at least 3 dots to hold out from. If something
+    // went badly wrong and there are fewer, fall back to the training error
+    // rather than showing "Infinity px".
+    const held = Number.isFinite(picked.errY)
+      ? { errX: picked.errX, errY: picked.errY }
+      : trainErr;
 
     return {
       real: real as GazeEstimator,
-      realErr: real.evaluate(this.samples),
-      baseErr: base.evaluate(this.samples),
+      lambda: picked.lambda,
+      /** Error on unseen dots. The honest one. */
+      heldErr: held,
+      /** Error on the dots it learned from. Kept only for comparison. */
+      trainErr,
+      /** The same held-out test, on a model that always guesses the middle.
+       *  Scored the same way, or the comparison would be rigged. */
+      baseErr: leaveOneDotOut(rows, () => new MeanGazeEstimator()),
+      used: rows.length,
+      dropped,
+      gated,
     };
   }
 }
@@ -203,11 +272,13 @@ function finish() {
     return;
   }
 
-  const { real, realErr, baseErr } = session.train();
+  const t = session.train();
 
-  const errY = Math.round(realErr.errY);
-  const errX = Math.round(realErr.errX);
-  const baseY = Math.round(baseErr.errY);
+  // errY is measured on dots the model never trained on, so it is a fair
+  // guess at how it will behave on a real page.
+  const errY = Math.round(t.heldErr.errY);
+  const errX = Math.round(t.heldErr.errX);
+  const baseY = Math.round(t.baseErr.errY);
   const lines = (errY / 24).toFixed(1); // ~24 px per line of text
 
   // Compare against the dumb baseline. This is the honest test.
@@ -215,7 +286,7 @@ function finish() {
 
   // Save the formula AND how good it was, so the popup can report it later.
   chrome.storage.local.set({
-    gazeModel: real.toJSON(),
+    gazeModel: t.real.toJSON(),
     gazeAccuracy: { errX, errY, improvement },
   });
 
@@ -238,5 +309,19 @@ function finish() {
   }
 
   advice.textContent = text;
+
+  // The small print. Mostly useful when something looks wrong.
+  const trainY = Math.round(t.trainErr.errY);
+  const detail = document.getElementById("detail");
+  if (detail) {
+    detail.textContent =
+      `${activeExtractor.describe()} | ${t.used} samples used` +
+      (t.gated
+        ? `, ${t.dropped} dropped as blinks`
+        : `, blink filter off (too few clean frames)`) +
+      ` | penalty ${t.lambda} | error on the dots it learned from: ${trainY} px` +
+      ` (lower than the ${errY} px above, which is why that one is not the score)`;
+  }
+
   result.style.display = "block";
 }

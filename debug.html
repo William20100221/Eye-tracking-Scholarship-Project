@@ -39,7 +39,14 @@
         overflow: hidden;
         margin-top: 3px;
       }
+      /* Features run either side of zero now, so the bar grows out from the
+         middle. A faint centre line marks where zero is. */
       .bar > i { display: block; height: 100%; background: #4a9eff; }
+      .bar {
+        background:
+          linear-gradient(#4a4a55, #4a4a55) 50% 0 / 1px 100% no-repeat,
+          #24242c;
+      }
 
       .status { font-size: 13px; margin-bottom: 12px; }
       .on { color: #45d17a; }
@@ -62,7 +69,11 @@
       <canvas id="face" width="640" height="480"></canvas>
       <p class="note">
         Grey = all 478 points &nbsp;·&nbsp; Blue = eye outline &nbsp;·&nbsp;
-        Green = iris &nbsp;·&nbsp; Orange = eye corners used as the ruler
+        Green = iris ring, the ruler &nbsp;·&nbsp;
+        Orange = eye corners, the vertical zero line<br />
+        Purple = eyelids &nbsp;·&nbsp; Red = face midline, the head-pitch sensors<br />
+        Look down without moving your head: the purple points follow your eyes
+        on their own. That movement is what used to be mistaken for gaze.
       </p>
     </div>
 

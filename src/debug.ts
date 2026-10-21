@@ -6,7 +6,8 @@
 // camera can only be opened once. So we ask the service worker for the
 // points it already has.
 
-export {}; // <- IMPORTANT. Makes esbuild treat this as a module.
+import { activeFeatureNames } from "./core/active";
+import { EYE_L, EYE_R, HEAD } from "./core/Landmarks";
 
 // ---- landmark index lists (from MediaPipe's face mesh) ----
 const LEFT_EYE_RING = [
@@ -16,21 +17,28 @@ const RIGHT_EYE_RING = [
   362, 398, 384, 385, 386, 387, 388, 466, 263, 249, 390, 373, 374, 380, 381,
   382,
 ];
-const LEFT_IRIS = [468, 469, 470, 471, 472];
-const RIGHT_IRIS = [473, 474, 475, 476, 477];
-// The points used as the "ruler" in IrisRelativeExtractor.
-const RULERS = [33, 133, 159, 145, 362, 263, 386, 374];
+const LEFT_IRIS = [468, ...EYE_L.IRIS_RING];
+const RIGHT_IRIS = [473, ...EYE_R.IRIS_RING];
 
-const FEATURE_NAMES = [
-  "constant",
-  "eye X (ex)",
-  "eye Y (ey)",
-  "ex squared",
-  "ey squared",
-  "ex times ey",
-  "head X",
-  "head Y",
-  "face width",
+/**
+ * The eye corners. These are the vertical ZERO LINE: the iris is measured
+ * up or down from the midpoint between them. Corners are held by bone, so
+ * unlike the eyelids they stay put when you blink.
+ */
+const ZERO_LINE = [EYE_L.OUTER, EYE_L.INNER, EYE_R.OUTER, EYE_R.INNER];
+
+/**
+ * The face midline. These four are the head-pitch sensors: nod down and the
+ * forehead stretches away from the eyes while the chin bunches towards them.
+ */
+const MIDLINE = [HEAD.FOREHEAD, HEAD.NASION, HEAD.NOSE_TIP, HEAD.CHIN];
+
+/** Eyelids. No longer a ruler - now a feature in their own right. */
+const LIDS = [
+  ...EYE_L.LID_UPPER_MID,
+  ...EYE_L.LID_LOWER_MID,
+  ...EYE_R.LID_UPPER_MID,
+  ...EYE_R.LID_LOWER_MID,
 ];
 
 // ---- elements ----
@@ -94,26 +102,60 @@ function drawFace(points: { x: number; y: number }[]) {
     fctx.fill();
   }
 
-  // The ruler points - these are what make the tracking head-proof.
-  fctx.fillStyle = "#ffa94a";
-  for (const i of RULERS) {
+  // The zero line - the iris is measured up or down from between these.
+  dots(points, ZERO_LINE, "#ffa94a", 3);
+
+  // The eyelids. Watch these move on their own when you look down: that is
+  // the effect the old vertical feature could not tell apart from a real
+  // downward look.
+  dots(points, LIDS, "#c07bff", 2);
+
+  // The head-pitch sensors, joined up so the tilt is visible.
+  dots(points, MIDLINE, "#ff6b6b", 3);
+  fctx.beginPath();
+  MIDLINE.forEach((i, n) => {
+    const p = points[i];
+    if (!p) return;
+    if (n === 0) fctx.moveTo(px(p.x), py(p.y));
+    else fctx.lineTo(px(p.x), py(p.y));
+  });
+  fctx.strokeStyle = "rgba(255,107,107,.4)";
+  fctx.lineWidth = 1;
+  fctx.stroke();
+}
+
+function dots(points: any[], idx: number[], colour: string, r: number) {
+  fctx.fillStyle = colour;
+  for (const i of idx) {
     const p = points[i];
     if (!p) continue;
     fctx.beginPath();
-    fctx.arc(px(p.x), py(p.y), 2.5, 0, Math.PI * 2);
+    fctx.arc(px(p.x), py(p.y), r, 0, Math.PI * 2);
     fctx.fill();
   }
 }
 
-function drawFeatures(features: number[]) {
+function drawFeatures(features: number[], quality?: number) {
   let html = "";
+
+  if (typeof quality === "number") {
+    const colour = quality > 0.5 ? "#45d17a" : "#ff6b6b";
+    html +=
+      `<tr><td class="k" style="color:${colour}">frame quality` +
+      `<div class="bar"><i style="width:${quality * 100}%;background:${colour}"></i></div></td>` +
+      `<td class="v" style="color:${colour}">${quality.toFixed(2)}</td></tr>`;
+  }
+
   features.forEach((v, i) => {
-    const name = FEATURE_NAMES[i] ?? "f" + i;
-    // Most features sit around 0..1, so a 0..1 bar is a fair picture.
-    const pct = Math.max(0, Math.min(1, v)) * 100;
+    const name = activeFeatureNames[i] ?? "f" + i;
+    // Features now run either side of zero, so centre the bar on the middle
+    // and let it grow left or right. Clamped to +/-1.
+    const c = Math.max(-1, Math.min(1, v));
+    const left = c < 0 ? 50 + c * 50 : 50;
+    const width = Math.abs(c) * 50;
     html +=
       `<tr><td class="k">${name}` +
-      `<div class="bar"><i style="width:${pct}%"></i></div></td>` +
+      `<div class="bar"><i style="margin-left:${left}%;width:${width}%"></i></div></td>` +
       `<td class="v">${v.toFixed(3)}</td></tr>`;
   });
   featTable.innerHTML = html;
@@ -152,7 +194,7 @@ setInterval(() => {
 
     lastPoints = res.points;
     drawFace(res.points);
-    if (Array.isArray(res.features)) drawFeatures(res.features);
+    if (Array.isArray(res.features)) drawFeatures(res.features, res.quality);
     drawScreenGuess(res.sx, res.sy);
   });
 }, 40);

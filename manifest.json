@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Reading Comprehension Assistant",
   "description": "Helps reduce comprehension loss during digital reading",
-  "version": "1.3",
+  "version": "1.5",
   "permissions": ["storage", "activeTab", "offscreen"],
   "host_permissions": ["<all_urls>"],
   "background": {

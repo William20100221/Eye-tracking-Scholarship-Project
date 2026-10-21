@@ -122,5 +122,15 @@ export class RawIrisExtractor extends FeatureExtractor {
   }
 }
 
-/** The one the extension actually uses. Change here to experiment. */
+/**
+ * DEPRECATED - the live extractor now lives in ./active.ts.
+ *
+ * It had to move: the vertical extractors extend the class above, so if this
+ * file imported them back to build `activeExtractor` the two files would
+ * depend on each other in a circle and `class X extends Y` would throw at
+ * start-up. active.ts imports both and is imported by neither.
+ *
+ * Left here only so nothing breaks if an old import is still around. Do not
+ * import this - import `activeExtractor` from "./active" instead.
+ */
 export const activeExtractor: FeatureExtractor = new IrisRelativeExtractor();
